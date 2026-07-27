@@ -1,16 +1,24 @@
 import { NextRequest } from "next/server";
 import { getDb, queryOne, run, saveDb } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const { user, error } = await requireRole(["admin", "stock_manager", "sales"]);
+  if (error) return error;
 
   try {
     const { product_id, type, quantity, note } = await request.json();
 
     if (!product_id || !type || !quantity) {
       return Response.json({ error: "product_id, type, and quantity are required" }, { status: 400 });
+    }
+
+    if (type === "IN" && user.role === "sales") {
+      return Response.json({ error: "Sales cannot perform stock IN" }, { status: 403 });
+    }
+
+    if (type === "OUT" && user.role === "stock_manager") {
+      return Response.json({ error: "Stock manager cannot perform stock OUT" }, { status: 403 });
     }
 
     const db = await getDb();

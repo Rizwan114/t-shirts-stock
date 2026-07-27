@@ -5,6 +5,7 @@ import AuthGuard from "@/components/AuthGuard";
 import Sidebar from "@/components/Sidebar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Package, Search, Edit2, Trash2, X, Save, ArrowDown, ArrowUp, Filter, Check } from "lucide-react";
+import { getSizeColor, getStockBadge } from "@/lib/utils";
 
 interface Product {
   id: number;
@@ -15,6 +16,16 @@ interface Product {
   stock: number;
   price: number;
   created_at: string;
+}
+
+interface UserData {
+  role: string;
+}
+
+interface SizeOption {
+  id: number;
+  name: string;
+  sort_order: number;
 }
 
 export default function ProductsPage() {
@@ -28,6 +39,10 @@ export default function ProductsPage() {
   const [stockQty, setStockQty] = useState(1);
   const [stockType, setStockType] = useState<"IN" | "OUT">("IN");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [sizes, setSizes] = useState<SizeOption[]>([]);
+
+  const canEdit = user?.role === "admin" || user?.role === "stock_manager";
 
   const fetchProducts = async () => {
     const res = await fetch("/api/products");
@@ -37,6 +52,12 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => setUser(data.user || data));
+    fetch("/api/sizes")
+      .then((res) => res.json())
+      .then((data) => setSizes(data.sizes || []));
     fetchProducts();
   }, []);
 
@@ -98,32 +119,15 @@ export default function ProductsPage() {
     return matchSearch && matchSize;
   });
 
-  const getSizeColor = (size: string) => {
-    switch (size) {
-      case "S": return "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 ring-1 ring-cyan-500/20";
-      case "M": return "bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-1 ring-violet-500/20";
-      case "L": return "bg-pink-500/10 text-pink-600 dark:text-pink-400 ring-1 ring-pink-500/20";
-      default: return "bg-slate-500/10 text-slate-600 dark:text-slate-400 ring-1 ring-slate-500/20";
-    }
-  };
-
-  const getStockBadge = (stock: number) => {
-    if (stock <= 5) return "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 ring-1 ring-red-500/20";
-    if (stock <= 15) return "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20";
-    return "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20";
-  };
-
   return (
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <Sidebar />
         <main className="flex-1 lg:ml-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 relative overflow-hidden">
-          {/* Subtle background decorations */}
           <div className="absolute top-20 right-10 w-72 h-72 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-20 left-1/3 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 max-w-7xl mx-auto">
-            {/* Header */}
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
               <div className="flex items-center gap-3 mb-1">
                 <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/20">
@@ -133,12 +137,14 @@ export default function ProductsPage() {
                   <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-[family-name:var(--font-poppins)]">
                     All Products
                   </h1>
-                  <p className="text-muted text-sm">{products.length} total products</p>
+                  <p className="text-muted text-sm">
+                    {products.length} total products
+                    {!canEdit && " (Read-only view)"}
+                  </p>
                 </div>
               </div>
             </motion.div>
 
-            {/* Toast messages */}
             <AnimatePresence>
               {message && (
                 <motion.div
@@ -157,7 +163,6 @@ export default function ProductsPage() {
               )}
             </AnimatePresence>
 
-            {/* Search & Filter bar */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -183,9 +188,9 @@ export default function ProductsPage() {
                     className="pl-10 pr-8 py-2.5 bg-background/60 border border-border/80 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 outline-none transition-all appearance-none cursor-pointer min-w-[140px]"
                   >
                     <option value="">All Sizes</option>
-                    <option value="S">Small (S)</option>
-                    <option value="M">Medium (M)</option>
-                    <option value="L">Large (L)</option>
+                    {sizes.map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -209,7 +214,6 @@ export default function ProductsPage() {
               )}
             </motion.div>
 
-            {/* Loading */}
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24">
                 <div className="relative">
@@ -219,7 +223,6 @@ export default function ProductsPage() {
                 <p className="text-muted text-sm mt-4">Loading products...</p>
               </div>
             ) : filtered.length === 0 ? (
-              /* Empty state */
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -252,7 +255,6 @@ export default function ProductsPage() {
               </motion.div>
             ) : (
               <>
-                {/* Desktop table */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -269,7 +271,7 @@ export default function ProductsPage() {
                           <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted uppercase tracking-wider">Color</th>
                           <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted uppercase tracking-wider">Stock</th>
                           <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted uppercase tracking-wider">Price</th>
-                          <th className="text-right px-5 py-3.5 text-xs font-semibold text-muted uppercase tracking-wider">Actions</th>
+                          {canEdit && <th className="text-right px-5 py-3.5 text-xs font-semibold text-muted uppercase tracking-wider">Actions</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/60">
@@ -290,7 +292,9 @@ export default function ProductsPage() {
                                 </td>
                                 <td className="px-3 py-2.5">
                                   <select value={editForm.size || ""} onChange={(e) => setEditForm({ ...editForm, size: e.target.value })} className="w-full px-3 py-1.5 bg-background/80 border border-indigo-500/30 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all appearance-none cursor-pointer">
-                                    <option value="S">S</option><option value="M">M</option><option value="L">L</option>
+                                    {sizes.map((s) => (
+                                      <option key={s.id} value={s.name}>{s.name}</option>
+                                    ))}
                                   </select>
                                 </td>
                                 <td className="px-3 py-2.5">
@@ -329,19 +333,21 @@ export default function ProductsPage() {
                                   </span>
                                 </td>
                                 <td className="px-5 py-3.5 text-sm font-medium text-foreground">Rs. {product.price}</td>
-                                <td className="px-5 py-3.5">
-                                  <div className="flex gap-1 justify-end">
-                                    <button onClick={() => setShowStockModal(product.id)} className="p-1.5 text-muted hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all" title="Adjust stock">
-                                      <ArrowDown className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => handleEdit(product)} className="p-1.5 text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" title="Edit">
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => handleDelete(product.id)} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all" title="Delete">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
+                                {canEdit && (
+                                  <td className="px-5 py-3.5">
+                                    <div className="flex gap-1 justify-end">
+                                      <button onClick={() => setShowStockModal(product.id)} className="p-1.5 text-muted hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all" title="Adjust stock">
+                                        <ArrowDown className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => handleEdit(product)} className="p-1.5 text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" title="Edit">
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => handleDelete(product.id)} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all" title="Delete">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </>
                             )}
                           </tr>
@@ -351,7 +357,6 @@ export default function ProductsPage() {
                   </div>
                 </motion.div>
 
-                {/* Mobile card layout */}
                 <div className="md:hidden space-y-3">
                   {filtered.map((product, index) => (
                     <motion.div
@@ -367,7 +372,9 @@ export default function ProductsPage() {
                           <input value={editForm.barcode || ""} onChange={(e) => setEditForm({ ...editForm, barcode: e.target.value })} placeholder="Barcode" className="w-full px-3 py-2 bg-background/80 border border-indigo-500/30 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all" />
                           <div className="grid grid-cols-2 gap-3">
                             <select value={editForm.size || ""} onChange={(e) => setEditForm({ ...editForm, size: e.target.value })} className="w-full px-3 py-2 bg-background/80 border border-indigo-500/30 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all appearance-none cursor-pointer">
-                              <option value="S">S</option><option value="M">M</option><option value="L">L</option>
+                              {sizes.map((s) => (
+                                <option key={s.id} value={s.name}>{s.name}</option>
+                              ))}
                             </select>
                             <input value={editForm.color || ""} onChange={(e) => setEditForm({ ...editForm, color: e.target.value })} placeholder="Color" className="w-full px-3 py-2 bg-background/80 border border-indigo-500/30 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all" />
                           </div>
@@ -411,17 +418,19 @@ export default function ProductsPage() {
                               <p className="text-sm font-medium text-foreground">Rs. {product.price}</p>
                             </div>
                           </div>
-                          <div className="flex gap-2 pt-2 border-t border-border/60">
-                            <button onClick={() => setShowStockModal(product.id)} className="flex-1 py-1.5 text-xs font-medium text-muted hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all flex items-center justify-center gap-1">
-                              <ArrowDown className="w-3.5 h-3.5" /> Stock
-                            </button>
-                            <button onClick={() => handleEdit(product)} className="flex-1 py-1.5 text-xs font-medium text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all flex items-center justify-center gap-1">
-                              <Edit2 className="w-3.5 h-3.5" /> Edit
-                            </button>
-                            <button onClick={() => handleDelete(product.id)} className="flex-1 py-1.5 text-xs font-medium text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all flex items-center justify-center gap-1">
-                              <Trash2 className="w-3.5 h-3.5" /> Delete
-                            </button>
-                          </div>
+                          {canEdit && (
+                            <div className="flex gap-2 pt-2 border-t border-border/60">
+                              <button onClick={() => setShowStockModal(product.id)} className="flex-1 py-1.5 text-xs font-medium text-muted hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all flex items-center justify-center gap-1">
+                                <ArrowDown className="w-3.5 h-3.5" /> Stock
+                              </button>
+                              <button onClick={() => handleEdit(product)} className="flex-1 py-1.5 text-xs font-medium text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all flex items-center justify-center gap-1">
+                                <Edit2 className="w-3.5 h-3.5" /> Edit
+                              </button>
+                              <button onClick={() => handleDelete(product.id)} className="flex-1 py-1.5 text-xs font-medium text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all flex items-center justify-center gap-1">
+                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
                     </motion.div>
@@ -431,7 +440,6 @@ export default function ProductsPage() {
             )}
           </div>
 
-          {/* Stock Modal */}
           <AnimatePresence>
             {showStockModal && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowStockModal(null)}>

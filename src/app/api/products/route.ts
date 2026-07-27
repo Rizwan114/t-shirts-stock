@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb, queryAll, queryOne, run, saveDb } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, requireRole } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const size = url.searchParams.get("size");
 
   let products;
-  if (size && ["S", "M", "L"].includes(size)) {
+  if (size) {
     products = await queryAll(db, "SELECT * FROM products WHERE size = ? ORDER BY created_at DESC", [size]);
   } else {
     products = await queryAll(db, "SELECT * FROM products ORDER BY size, created_at DESC");
@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const { user, error } = await requireRole(["admin", "stock_manager"]);
+  if (error) return error;
 
   try {
     const { name, barcode, size, color, stock, price } = await request.json();

@@ -5,6 +5,7 @@ import AuthGuard from "@/components/AuthGuard";
 import Sidebar from "@/components/Sidebar";
 import { motion, AnimatePresence } from "framer-motion";
 import { History, ArrowDown, ArrowUp, Search, Printer, X, PackageSearch, FileText } from "lucide-react";
+import { getSizeColor } from "@/lib/utils";
 
 interface HistoryEntry {
   id: number;
@@ -71,68 +72,61 @@ export default function HistoryPage() {
       <head>
         <title>Stock Slip</title>
         <style>
-          @media print { body { margin: 0; } }
+          @media print {
+            body { margin: 0; padding: 0; }
+            @page { size: 2in 1in; margin: 2mm; }
+          }
           body {
             font-family: 'Courier New', monospace;
-            width: 280px;
+            width: 2in;
             margin: 0 auto;
-            padding: 10px;
+            padding: 3mm;
             color: #000;
+            font-size: 8px;
+            line-height: 1.2;
           }
           .center { text-align: center; }
-          .line { border-top: 1px dashed #000; margin: 8px 0; }
+          .line { border-top: 1px dashed #000; margin: 2mm 0; }
           .bold { font-weight: bold; }
-          .large { font-size: 16px; }
           table { width: 100%; }
-          td { padding: 2px 0; font-size: 13px; }
+          td { padding: 0.5mm 0; font-size: 7.5px; }
           .val { text-align: right; }
-          .type-box { text-align: center; font-size: 14px; font-weight: bold; padding: 4px 0; margin: 6px 0; border: 2px solid #000; }
-          .footer { margin-top: 10px; font-size: 11px; text-align: center; color: #666; }
+          .footer { margin-top: 2mm; font-size: 6.5px; text-align: center; color: #555; }
         </style>
       </head>
       <body>
-        <div class="center bold large">T-SHIRT STOCK</div>
-        <div class="center" style="font-size:11px;color:#666;">Inventory Management</div>
-        <div class="line"></div>
-        <div class="type-box">${entry.type === "IN" ? "STOCK IN" : "STOCK OUT"}</div>
+        <div class="center bold" style="font-size:10px;">T-SHIRT STOCK</div>
+        <div class="center" style="font-size:7px;font-weight:bold;margin-top:1mm;">
+          ${entry.type === "IN" ? "STOCK IN" : "STOCK OUT"}
+        </div>
         <div class="line"></div>
         <table>
           <tr><td class="bold">Date</td><td class="val">${dateStr}</td></tr>
           <tr><td class="bold">Time</td><td class="val">${timeStr}</td></tr>
         </table>
         <div class="line"></div>
-        <div class="bold" style="font-size:14px;margin-bottom:6px;">PRODUCT DETAILS</div>
         <table>
-          <tr><td class="bold">Name</td><td class="val">${entry.product_name}</td></tr>
+          <tr><td class="bold">Item</td><td class="val">${entry.product_name}</td></tr>
           <tr><td class="bold">Barcode</td><td class="val">${entry.barcode}</td></tr>
-          <tr><td class="bold">Size</td><td class="val">${entry.size}</td></tr>
-          <tr><td class="bold">Color</td><td class="val">${entry.color}</td></tr>
-          ${entry.price != null ? `<tr><td class="bold">Price</td><td class="val">Rs. ${Number(entry.price).toFixed(2)}</td></tr>` : ""}
+          <tr><td class="bold">Size/Color</td><td class="val">${entry.size} / ${entry.color}</td></tr>
         </table>
         <div class="line"></div>
         <table>
           <tr><td class="bold">Type</td><td class="val">${entry.type}</td></tr>
-          <tr><td class="bold">Quantity</td><td class="val">${entry.quantity}</td></tr>
+          <tr><td class="bold">Qty</td><td class="val">${entry.quantity}</td></tr>
+          ${entry.price != null ? `<tr><td class="bold">Price</td><td class="val">Rs. ${Number(entry.price).toFixed(2)}</td></tr>` : ""}
+          ${entry.price != null ? `<tr><td class="bold" style="font-size:9px;">Total</td><td class="val" style="font-size:9px;font-weight:bold;">Rs. ${(Number(entry.price) * entry.quantity).toFixed(2)}</td></tr>` : ""}
         </table>
-        ${entry.note ? `<div class="line"></div><div style="font-size:12px;"><span class="bold">Note:</span> ${entry.note}</div>` : ""}
+        ${entry.note ? `<div class="line"></div><div style="font-size:7px;"><span class="bold">Note:</span> ${entry.note}</div>` : ""}
         <div class="line"></div>
         <div class="center footer">
-          Slip #${entry.id} | ${entry.type === "IN" ? "Received" : "Issued"}
+          #${entry.id} | ${entry.type === "IN" ? "Received" : "Issued"}
         </div>
         <script>window.onload = function(){ window.print(); }</script>
       </body>
       </html>
     `);
     printWindow.document.close();
-  };
-
-  const getSizeColor = (size: string) => {
-    switch (size) {
-      case "S": return "bg-cyan-500/10 text-cyan-600 ring-1 ring-cyan-500/20";
-      case "M": return "bg-violet-500/10 text-violet-600 ring-1 ring-violet-500/20";
-      case "L": return "bg-pink-500/10 text-pink-600 ring-1 ring-pink-500/20";
-      default: return "bg-slate-500/10 text-slate-600 ring-1 ring-slate-500/20";
-    }
   };
 
   return (
@@ -311,6 +305,11 @@ export default function HistoryPage() {
                       }`}>
                         {entry.type === "IN" ? "+" : "-"}{entry.quantity}
                       </p>
+                      {entry.price != null && (
+                        <p className="text-[11px] text-muted mt-0.5">
+                          Rs. {(Number(entry.price) * entry.quantity).toFixed(2)}
+                        </p>
+                      )}
                       <p className="text-[11px] text-muted mt-0.5">
                         {new Date(entry.created_at).toLocaleDateString()} &middot; {new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </p>
@@ -323,6 +322,11 @@ export default function HistoryPage() {
                         }`}>
                           {entry.type === "IN" ? "+" : "-"}{entry.quantity}
                         </p>
+                        {entry.price != null && (
+                          <p className="text-[10px] text-muted">
+                            Rs. {(Number(entry.price) * entry.quantity).toFixed(2)}
+                          </p>
+                        )}
                         <p className="text-[10px] text-muted">
                           {new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>

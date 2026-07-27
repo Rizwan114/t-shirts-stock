@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb, queryOne, run, saveDb } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, requireRole } from "@/lib/auth";
 
 export async function GET(
   _request: NextRequest,
@@ -24,8 +24,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser();
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireRole(["admin", "stock_manager"]);
+  if (error) return error;
 
   const { id } = await params;
   const db = await getDb();
@@ -42,8 +42,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser();
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireRole(["admin", "stock_manager"]);
+  if (error) return error;
 
   const { id } = await params;
   const db = await getDb();

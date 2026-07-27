@@ -3,9 +3,22 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
+interface UserData {
+  id: number;
+  username: string;
+  role: string;
+}
+
+export default function AuthGuard({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserData | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -13,9 +26,17 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error("Not auth");
         return res.json();
       })
-      .then(() => setLoading(false))
+      .then((data) => {
+        const u = data.user || data;
+        if (allowedRoles && !allowedRoles.includes(u.role)) {
+          router.push("/dashboard");
+          return;
+        }
+        setUser(u);
+        setLoading(false);
+      })
       .catch(() => router.push("/login"));
-  }, [router]);
+  }, [router, allowedRoles]);
 
   if (loading) {
     return (

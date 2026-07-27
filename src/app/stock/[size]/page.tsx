@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Sidebar from "@/components/Sidebar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Package, ArrowDown, ArrowUp, Edit2, Trash2, X, Save, Check } from "lucide-react";
+import { getSizeColor } from "@/lib/utils";
 
 interface Product {
   id: number;
@@ -28,7 +30,7 @@ function StockPageContent({ size, title, color }: { size: string; title: string;
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchProducts = useCallback(async () => {
-    const res = await fetch(`/api/products?size=${size}`);
+    const res = await fetch(`/api/products?size=${encodeURIComponent(size)}`);
     const data = await res.json();
     setProducts(data.products || []);
     setLoading(false);
@@ -173,7 +175,7 @@ function StockPageContent({ size, title, color }: { size: string; title: string;
                   </div>
 
                   <div className="flex items-center gap-2 text-sm text-muted mb-3 flex-wrap">
-                    <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded-md text-xs font-medium">{product.size}</span>
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getSizeColor(product.size)}`}>{product.size}</span>
                     <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md text-xs">{product.color}</span>
                     <span className="ml-auto text-xs font-medium">Rs. {product.price}</span>
                   </div>
@@ -231,12 +233,35 @@ function StockPageContent({ size, title, color }: { size: string; title: string;
   );
 }
 
-export default function SmallPage() {
+const sizeGradients: Record<string, string> = {
+  S: "from-cyan-500 to-blue-500",
+  M: "from-violet-500 to-purple-500",
+  L: "from-pink-500 to-rose-500",
+  XL: "from-amber-500 to-orange-500",
+  XXL: "from-orange-500 to-red-500",
+  "3XL": "from-red-500 to-rose-600",
+  "4XL": "from-rose-500 to-pink-600",
+  "5XL": "from-fuchsia-500 to-purple-600",
+};
+
+const fallbackGradients = [
+  "from-indigo-500 to-blue-600",
+  "from-teal-500 to-emerald-600",
+  "from-emerald-500 to-green-600",
+  "from-sky-500 to-cyan-600",
+];
+
+export default function StockSizePage() {
+  const params = useParams();
+  const size = (params.size as string).toUpperCase();
+
+  const gradient = sizeGradients[size] || fallbackGradients[size.charCodeAt(0) % fallbackGradients.length];
+
   return (
-    <AuthGuard>
+    <AuthGuard allowedRoles={["admin", "stock_manager"]}>
       <div className="flex min-h-screen bg-background">
         <Sidebar />
-        <StockPageContent size="S" title="Small Size (S)" color="from-cyan-500 to-blue-500" />
+        <StockPageContent size={size} title={`Size ${size}`} color={`bg-gradient-to-r ${gradient}`} />
       </div>
     </AuthGuard>
   );

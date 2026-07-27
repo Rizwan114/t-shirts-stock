@@ -492,14 +492,25 @@ export default function LoginPage() {
               transition={{ delay: 1, duration: 0.8 }}
               className="mt-8 text-center"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.05]">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-slate-500 text-xs">
-                  Default credentials:{" "}
-                  <span className="text-slate-400 font-medium">admin</span>
-                  {" / "}
-                  <span className="text-slate-400 font-medium">admin123</span>
-                </span>
+              <div className="inline-flex flex-col items-center gap-2 px-4 py-3 rounded-full bg-white/[0.03] border border-white/[0.05]">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-slate-500 text-xs">
+                    <span className="text-amber-400 font-medium">Admin</span>: admin / admin123
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                  <span className="text-slate-500 text-xs">
+                    <span className="text-blue-400 font-medium">Stock</span>: stock / stock123
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-slate-500 text-xs">
+                    <span className="text-emerald-400 font-medium">Sales</span>: sales / sales123
+                  </span>
+                </div>
               </div>
             </motion.div>
           </div>

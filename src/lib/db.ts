@@ -147,15 +147,62 @@ export async function initializeDb(): Promise<void> {
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     )
   `);
+  await c.execute(`
+    CREATE TABLE IF NOT EXISTS sizes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const sizesCount = await c.execute("SELECT COUNT(*) as count FROM sizes");
+  if (Number(sizesCount.rows[0]?.count || 0) === 0) {
+    const defaultSizes = ["S", "M", "L", "XL", "XXL", "3XL", "4XL", "5XL"];
+    for (let i = 0; i < defaultSizes.length; i++) {
+      await c.execute({
+        sql: "INSERT INTO sizes (name, sort_order, is_default) VALUES (?, ?, 1)",
+        args: [defaultSizes[i], i],
+      });
+    }
+  }
 
   const countResult = await c.execute("SELECT COUNT(*) as count FROM users");
   const count = countResult.rows[0]?.count || 0;
   if (Number(count) === 0) {
-    const hashed = bcrypt.hashSync("admin123", 10);
+    const adminHashed = bcrypt.hashSync("admin123", 10);
     await c.execute({
       sql: "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-      args: ["admin", hashed, "admin"],
+      args: ["admin", adminHashed, "admin"],
     });
+    const stockHashed = bcrypt.hashSync("stock123", 10);
+    await c.execute({
+      sql: "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+      args: ["stock", stockHashed, "stock_manager"],
+    });
+    const salesHashed = bcrypt.hashSync("sales123", 10);
+    await c.execute({
+      sql: "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+      args: ["sales", salesHashed, "sales"],
+    });
+  } else {
+    const stockUser = await c.execute("SELECT id FROM users WHERE username = 'stock'");
+    if (stockUser.rows.length === 0) {
+      const stockHashed = bcrypt.hashSync("stock123", 10);
+      await c.execute({
+        sql: "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+        args: ["stock", stockHashed, "stock_manager"],
+      });
+    }
+    const salesUser = await c.execute("SELECT id FROM users WHERE username = 'sales'");
+    if (salesUser.rows.length === 0) {
+      const salesHashed = bcrypt.hashSync("sales123", 10);
+      await c.execute({
+        sql: "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+        args: ["sales", salesHashed, "sales"],
+      });
+    }
   }
 }
 

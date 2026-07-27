@@ -27,3 +27,14 @@ export async function getCurrentUser(): Promise<UserPayload | null> {
   if (!token) return null;
   return verifyToken(token);
 }
+
+export async function requireRole(allowedRoles: string[]): Promise<{ user: UserPayload; error?: Response }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { user: { id: 0, username: "", role: "" }, error: Response.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+  if (!allowedRoles.includes(user.role)) {
+    return { user, error: Response.json({ error: "Forbidden: insufficient permissions" }, { status: 403 }) };
+  }
+  return { user };
+}
