@@ -13,6 +13,14 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "product_id, type, and quantity are required" }, { status: 400 });
     }
 
+    if (!["IN", "OUT"].includes(type)) {
+      return Response.json({ error: "Type must be IN or OUT" }, { status: 400 });
+    }
+
+    if (quantity < 1) {
+      return Response.json({ error: "Quantity must be at least 1" }, { status: 400 });
+    }
+
     if (type === "IN" && user.role === "sales") {
       return Response.json({ error: "Sales cannot perform stock IN" }, { status: 403 });
     }

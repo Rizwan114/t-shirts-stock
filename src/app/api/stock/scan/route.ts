@@ -7,10 +7,10 @@ export async function POST(request: NextRequest) {
   if (error) return error;
 
   try {
-    const { barcode, type = "OUT", quantity = 1 } = await request.json();
+    const { barcode, productId, type = "OUT", quantity = 1 } = await request.json();
 
-    if (!barcode) {
-      return Response.json({ error: "Barcode is required" }, { status: 400 });
+    if (!barcode && !productId) {
+      return Response.json({ error: "Barcode or productId is required" }, { status: 400 });
     }
 
     if (!["IN", "OUT"].includes(type)) {
@@ -30,14 +30,22 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
-    const product = await queryOne<{ id: number; name: string; barcode: string; size: string; color: string; stock: number; price: number }>(db, "SELECT * FROM products WHERE barcode = ?", [barcode]);
+    let product;
+    if (productId) {
+      product = await queryOne<{ id: number; name: string; barcode: string; size: string; color: string; stock: number; price: number }>(db, "SELECT * FROM products WHERE id = ?", [productId]);
+    } else {
+      product = await queryOne<{ id: number; name: string; barcode: string; size: string; color: string; stock: number; price: number }>(db, "SELECT * FROM products WHERE barcode = ?", [barcode]);
+    }
 
     if (!product) {
-      return Response.json({ error: "Product not found with this barcode" }, { status: 404 });
+      return Response.json({ error: "Product not found" }, { status: 404 });
     }
 
     if (type === "OUT" && product.stock < quantity) {
-      return Response.json({ error: `Insufficient stock! Available: ${product.stock}` }, { status: 400 });
+      return Response.json({
+        error: `Insufficient stock! Available: ${product.stock}`,
+        product: { ...product, stock: product.stock },
+      }, { status: 400 });
     }
 
     const stockChange = type === "IN" ? quantity : -quantity;
@@ -45,7 +53,7 @@ export async function POST(request: NextRequest) {
     await run(db, "INSERT INTO stock_history (product_id, type, quantity, note) VALUES (?, ?, ?, ?)", [product.id, type, quantity, `Scanned by ${user.username}`]);
     saveDb();
 
-    const updated = await queryOne<{ stock: number }>(db, "SELECT * FROM products WHERE id = ?", [product.id]);
+    const updated = await queryOne<{ id: number; name: string; barcode: string; size: string; color: string; stock: number; price: number }>(db, "SELECT * FROM products WHERE id = ?", [product.id]);
 
     return Response.json({
       message: `Stock ${type === "IN" ? "increased" : "decreased"} by ${quantity}`,
@@ -53,6 +61,7 @@ export async function POST(request: NextRequest) {
       remaining: updated?.stock,
       scannedBy: user.username,
       scannedAt: new Date().toISOString(),
+      transactionId: Date.now(),
     });
   } catch (error) {
     return Response.json({ error: "Server error: " + error }, { status: 500 });

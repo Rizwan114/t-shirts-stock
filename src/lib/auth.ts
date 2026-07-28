@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET || "tshirts-mall-secret-key-2024";
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export interface UserPayload {
   id: number;
