@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Sidebar from "@/components/Sidebar";
 import { motion } from "framer-motion";
-import { PackagePlus, ArrowLeft, Tag, Barcode, Palette, Boxes, IndianRupee, Shirt, AlertCircle, Plus } from "lucide-react";
+import { PackagePlus, ArrowLeft, Tag, Barcode, Palette, Boxes, IndianRupee, Shirt, AlertCircle, Plus, RefreshCw } from "lucide-react";
 
 interface SizeOption {
   id: number;
@@ -44,6 +44,19 @@ export default function AddProductPage() {
   const [sizes, setSizes] = useState<SizeOption[]>([]);
   const [customMode, setCustomMode] = useState(false);
   const [customSize, setCustomSize] = useState("");
+  const [barcodeEdited, setBarcodeEdited] = useState(false);
+
+  const generateBarcodeCode = (name: string) => {
+    const cleaned = name.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const prefix = (cleaned.slice(0, 3) || "TSH").padEnd(3, "X");
+    const num = Math.floor(10000000 + Math.random() * 90000000);
+    return `${prefix}-${num}`;
+  };
+
+  useEffect(() => {
+    if (barcodeEdited) return;
+    setForm((prev) => ({ ...prev, barcode: generateBarcodeCode(prev.name) }));
+  }, [form.name, barcodeEdited]);
 
   useEffect(() => {
     fetch("/api/sizes")
@@ -167,12 +180,31 @@ export default function AddProductPage() {
                     <input
                       type="text"
                       value={form.barcode}
-                      onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                      className="w-full pl-10 pr-4 py-3.5 bg-background/80 border border-border rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 outline-none transition-all duration-200 placeholder:text-muted/40"
+                      onChange={(e) => {
+                        setForm({ ...form, barcode: e.target.value });
+                        setBarcodeEdited(true);
+                      }}
+                      className="w-full pl-10 pr-20 py-3.5 bg-background/80 border border-border rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 outline-none transition-all duration-200 placeholder:text-muted/40"
                       placeholder="e.g., TSH-001"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, barcode: generateBarcodeCode(prev.name) }));
+                        setBarcodeEdited(false);
+                      }}
+                      title="Generate a new barcode"
+                      className="absolute inset-y-0 right-0 flex items-center gap-1.5 px-3.5 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-r-xl transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span className="text-xs font-semibold">Generate</span>
+                    </button>
                   </div>
+                  <p className="text-[11px] text-muted/70 mt-1.5 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" />
+                    Barcode auto-generates — click Generate for a new one
+                  </p>
                 </div>
 
                 <div>

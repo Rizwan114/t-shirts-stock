@@ -16,6 +16,7 @@ import {
   Shirt,
   User,
   Ruler,
+  Barcode,
 } from "lucide-react";
 
 interface SizeItem {
@@ -29,6 +30,7 @@ const baseNavItems = [
   { href: "/sizes", label: "Manage Sizes", icon: Ruler, roles: ["admin", "stock_manager"] },
   { href: "/products", label: "All Products", icon: Package, roles: ["admin", "stock_manager", "sales"] },
   { href: "/products/add", label: "Add Product", icon: Package, roles: ["admin", "stock_manager"] },
+  { href: "/barcodes", label: "Barcode Generator", icon: Barcode, roles: ["admin", "stock_manager"] },
   { href: "/history", label: "History", icon: History, roles: ["admin", "stock_manager", "sales"] },
 ];
 
