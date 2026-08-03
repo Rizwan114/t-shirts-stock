@@ -64,7 +64,7 @@ export default function BarcodesPage() {
   const [name, setName] = useState("");
   const [barcode, setBarcode] = useState("");
   const [manualEdited, setManualEdited] = useState(false);
-  const [barcodeImg, setBarcodeImg] = useState<string | null>(null);
+  const [barcodeImg, setBarcodeImg] = useState<{ src: string; width: number; height: number } | null>(null);
   const [sizeW, setSizeW] = useState(1);
   const [sizeH, setSizeH] = useState(2);
   const [printed, setPrinted] = useState(false);
@@ -99,10 +99,12 @@ export default function BarcodesPage() {
 
   const renderBarcode = (value: string, pxW: number, pxH: number) => {
     const canvas = document.createElement("canvas");
-    const targetH = Math.round(clamp(pxH * 0.3, 26, 80));
-    const fontSize = Math.round(clamp(targetH * 0.3, 8, 14));
-    const maxW = Math.max(pxW - 8, 40);
-    const barWidths = [2.2, 1.8, 1.5, 1.2, 1, 0.8, 0.6];
+    const targetH = Math.round(clamp(pxH * 0.28, 24, 90));
+    const targetW = Math.max(Math.round(pxW * 0.94), 60);
+    const maxFontByWidth = Math.floor((targetW - 10) / (Math.max(value.length, 6) * 0.6));
+    const fontSize = Math.round(clamp(targetH * 0.25, 10, Math.max(maxFontByWidth, 10)));
+    const maxW = targetW;
+    const barWidths = [2.2, 1.8, 1.5, 1.2, 1, 0.8, 0.6, 0.5];
 
     for (const barW of barWidths) {
       JsBarcode(canvas, value, {
@@ -114,12 +116,12 @@ export default function BarcodesPage() {
         displayValue: true,
         fontSize,
         font: "monospace",
-        textMargin: Math.round(fontSize * 0.25),
+        textMargin: Math.round(fontSize * 0.2),
         margin: 2,
       });
       if (canvas.width <= maxW) break;
     }
-    return canvas.toDataURL("image/png");
+    return { src: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height };
   };
 
   useEffect(() => {
@@ -226,13 +228,15 @@ export default function BarcodesPage() {
     const pxW = Math.max(Math.round(sizeW * 96), 96);
     const pxH = Math.max(Math.round(sizeH * 96), 96);
     const f = clamp(pxH / 192, 0.6, 1.1);
-    const brandFs = Math.max(6, Math.round(10 * f));
-    const nameFs = Math.max(8, Math.round(12 * f));
-    const pad = Math.max(4, Math.round(6 * f));
-    const nameGap = Math.max(2, Math.round(3 * f));
-    const barGap = Math.max(3, Math.round(5 * f));
+    const pad = Math.max(3, Math.round(4 * f));
+    const brandFs = Math.max(5, Math.min(Math.round(8 * f), Math.floor((pxW - pad * 2) / 16)));
+    const brandLs = Math.min(1.5, Math.max(0.3, (pxW - pad * 2 - 13 * brandFs) / 12));
+    const nameFs = Math.max(10, Math.round(14 * f));
+    const nameGap = Math.max(1, Math.round(2 * f));
+    const barGap = Math.max(2, Math.round(3 * f));
     const imgMaxW = pxW - pad * 2;
-    const imgMaxH = Math.round(pxH * 0.32);
+    const imgMaxH = Math.round(pxH * 0.7);
+    const nameMaxH = Math.round(nameFs * 2 * 1.2);
 
     const printWindow = window.open("", "_blank", "width=600,height=600");
     if (!printWindow) return;
@@ -274,7 +278,7 @@ export default function BarcodesPage() {
           .brand {
             font-size: ${brandFs}px;
             font-weight: bold;
-            letter-spacing: 1.5px;
+            letter-spacing: ${brandLs}px;
             white-space: nowrap;
           }
           .name {
@@ -282,7 +286,7 @@ export default function BarcodesPage() {
             font-weight: bold;
             line-height: 1.2;
             margin-top: ${nameGap}px;
-            max-height: 38%;
+            max-height: ${nameMaxH}px;
             overflow: hidden;
             width: 100%;
           }
@@ -305,7 +309,7 @@ export default function BarcodesPage() {
         <div class="label">
           <div class="brand">T-SHIRT STOCK</div>
           <div class="name">${escapeHtml(labelName)}</div>
-          <div class="barcode"><img src="${barcodeImg}" alt="barcode" /></div>
+          <div class="barcode"><img src="${barcodeImg.src}" alt="barcode" /></div>
         </div>
         <script>window.onload = function(){ window.print(); window.close(); }; <\/script>
       </body>
@@ -733,10 +737,10 @@ export default function BarcodesPage() {
                         {name.trim() || barcode}
                       </p>
                       <img
-                        src={barcodeImg}
+                        src={barcodeImg.src}
                         alt="barcode"
                         className="mt-2 h-auto"
-                        style={{ maxWidth: previewImgMaxW }}
+                        style={{ width: Math.min(barcodeImg.width * previewScale, previewImgMaxW), maxWidth: previewImgMaxW }}
                       />
                     </motion.div>
                   ) : (

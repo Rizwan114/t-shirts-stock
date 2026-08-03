@@ -1,41 +1,79 @@
-HEAD
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# T-Shirts Stock
+
+Barcode sticker generator + stock/inventory management app for a T-shirt business. Built with Next.js (App Router), React, Turso (libSQL), and jsbarcode.
+
+## Features
+
+- Barcode generator with live preview and 1x2 / 1x1 / 2x1 / 2x2 / 2x3 inch sticker presets
+- One-tap print — the sticker prints at exact inch size
+- Product registration and stock tracking (IN / OUT scanning)
+- Stock history, POS-style scan page, and role-based auth (admin / stock_manager / sales)
+
+## Tech Stack
+
+- Next.js 16 (App Router) + TypeScript
+- Turso (libSQL) database — cloud, data persists across deploys
+- sql.js fallback for local development without Turso
+- jsbarcode for barcode rendering
+- Tailwind CSS + Framer Motion
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env` file in the project root (see `.env.example`):
 
-## Learn More
+```
+TURSO_DATABASE_URL=libsql://your-db-here.turso.io
+TURSO_AUTH_TOKEN=your-turso-token-here
+JWT_SECRET=your-random-secret-here
+```
 
-To learn more about Next.js, take a look at the following resources:
+- `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` — connect to your Turso database (create one free at turso.tech).
+- `JWT_SECRET` — any long random string used to sign login tokens.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+> If `TURSO_DATABASE_URL` is missing, the app falls back to a local SQLite file
+> (`tshirts-stock.db`). That file is gitignored and should NOT be relied on for
+> production — always use Turso on Vercel.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Default Users
 
-## Deploy on Vercel
+Created automatically on first run:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Username | Password  | Role          |
+| -------- | --------- | ------------- |
+| admin    | admin123  | admin         |
+| stock    | stock123  | stock_manager |
+| sales    | sales123  | sales         |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-=======
-# t-shirts-stock
-all-is-ok
- 09b74e15d2ea6f6f768ea9f56a28164186dfdb08
+## Deploy to Vercel
+
+1. Push this repo to GitHub.
+2. In Vercel, click **Add New → Project** and import the repo.
+3. Before (or after) deploying, add these **Environment Variables** under
+   Project → Settings → Environment Variables:
+
+   - `TURSO_DATABASE_URL`
+   - `TURSO_AUTH_TOKEN`
+   - `JWT_SECRET`
+
+   Use exactly the same values as your local `.env`. **This is critical** — your
+   stock data lives in Turso, and these variables are what point Vercel at it.
+
+4. Deploy. The app auto-creates tables on first run without touching existing data.
+
+> ⚠️ Do not skip the env vars. Without them the app falls back to the local
+> SQLite file, which is ephemeral on Vercel and your data would be lost on every
+> redeploy.
+
+## Printing Barcode Stickers
+
+- Set the printer paper size to match the sticker size (e.g., 1 x 2 inch).
+- The barcode, font size, and spacing auto-scale to the selected sticker size.
