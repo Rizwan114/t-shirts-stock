@@ -30,11 +30,12 @@ interface SizeOption {
   name: string;
 }
 
-const SIZE_STEP = 0.25;
+const SIZE_STEP = 0.1;
 const MIN_SIZE = 0.5;
 const MAX_SIZE = 4;
 
 const SIZE_PRESETS = [
+  { w: 1.5, h: 1.1, label: "1.5 × 1.1" },
   { w: 1, h: 2, label: "1 × 2" },
   { w: 1, h: 1, label: "1 × 1" },
   { w: 2, h: 1, label: "2 × 1" },
@@ -45,7 +46,23 @@ const SIZE_PRESETS = [
 const clamp = (v: number, min: number, max: number) =>
   Math.min(max, Math.max(min, v));
 
-const round1 = (v: number) => Math.round(v * 10) / 10;
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+const getLabelLayout = (w: number, h: number) => {
+  const pxW = Math.max(Math.round(w * 96), 96);
+  const pxH = Math.max(Math.round(h * 96), 96);
+  const f = Math.max(pxH / 105.6, 0.4);
+  const pad = Math.max(2, Math.round(4 * f));
+  const brandFs = Math.max(4, Math.min(Math.round(5 * f), Math.floor((pxW - pad * 2) / 16)));
+  const brandLs = Math.min(1.5, Math.max(0.3, (pxW - pad * 2 - 13 * brandFs) / 12));
+  const nameFs = Math.max(6, Math.round(10 * f));
+  const nameGap = Math.max(1, Math.round(2 * f));
+  const barGap = Math.max(2, Math.round(3 * f));
+  const imgMaxW = pxW - pad * 2;
+  const imgMaxH = Math.round(pxH * 0.7);
+  const nameMaxH = Math.round(nameFs * 2 * 1.2);
+  return { pxW, pxH, pad, brandFs, brandLs, nameFs, nameGap, barGap, imgMaxW, imgMaxH, nameMaxH };
+};
 
 const cleanName = (value: string) =>
   value
@@ -65,8 +82,10 @@ export default function BarcodesPage() {
   const [barcode, setBarcode] = useState("");
   const [manualEdited, setManualEdited] = useState(false);
   const [barcodeImg, setBarcodeImg] = useState<{ src: string; width: number; height: number } | null>(null);
-  const [sizeW, setSizeW] = useState(1);
-  const [sizeH, setSizeH] = useState(2);
+  const [sizeW, setSizeW] = useState(1.5);
+  const [sizeH, setSizeH] = useState(1.1);
+  const [wInput, setWInput] = useState("1.5");
+  const [hInput, setHInput] = useState("1.1");
   const [printed, setPrinted] = useState(false);
   const printTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [printStatus, setPrintStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -102,7 +121,7 @@ export default function BarcodesPage() {
     const targetH = Math.round(clamp(pxH * 0.28, 24, 90));
     const targetW = Math.max(Math.round(pxW * 0.94), 60);
     const maxFontByWidth = Math.floor((targetW - 10) / (Math.max(value.length, 6) * 0.6));
-    const fontSize = Math.round(clamp(targetH * 0.25, 10, Math.max(maxFontByWidth, 10)));
+    const fontSize = Math.round(clamp(targetH * 0.33, 7, Math.max(maxFontByWidth, 7)));
     const maxW = targetW;
     const barWidths = [2.2, 1.8, 1.5, 1.2, 1, 0.8, 0.6, 0.5];
 
@@ -225,18 +244,19 @@ export default function BarcodesPage() {
     if (!barcode.trim() || !barcodeImg) return;
 
     const labelName = name.trim() || "PRODUCT";
-    const pxW = Math.max(Math.round(sizeW * 96), 96);
-    const pxH = Math.max(Math.round(sizeH * 96), 96);
-    const f = clamp(pxH / 192, 0.6, 1.1);
-    const pad = Math.max(3, Math.round(4 * f));
-    const brandFs = Math.max(5, Math.min(Math.round(8 * f), Math.floor((pxW - pad * 2) / 16)));
-    const brandLs = Math.min(1.5, Math.max(0.3, (pxW - pad * 2 - 13 * brandFs) / 12));
-    const nameFs = Math.max(10, Math.round(14 * f));
-    const nameGap = Math.max(1, Math.round(2 * f));
-    const barGap = Math.max(2, Math.round(3 * f));
-    const imgMaxW = pxW - pad * 2;
-    const imgMaxH = Math.round(pxH * 0.7);
-    const nameMaxH = Math.round(nameFs * 2 * 1.2);
+    const {
+      pxW,
+      pxH,
+      pad,
+      brandFs,
+      brandLs,
+      nameFs,
+      nameGap,
+      barGap,
+      imgMaxW,
+      imgMaxH,
+      nameMaxH,
+    } = getLabelLayout(sizeW, sizeH);
 
     const printWindow = window.open("", "_blank", "width=600,height=600");
     if (!printWindow) return;
@@ -341,17 +361,48 @@ export default function BarcodesPage() {
     }
   };
 
-  const changeSize = (
-    setter: React.Dispatch<React.SetStateAction<number>>,
-    delta: number
-  ) => {
-    setter((prev) => round1(clamp(prev + delta, MIN_SIZE, MAX_SIZE)));
+  const applySizeW = (v: number) => {
+    const clamped = round2(clamp(v, MIN_SIZE, MAX_SIZE));
+    setSizeW(clamped);
+    setWInput(String(clamped));
+  };
+
+  const applySizeH = (v: number) => {
+    const clamped = round2(clamp(v, MIN_SIZE, MAX_SIZE));
+    setSizeH(clamped);
+    setHInput(String(clamped));
+  };
+
+  const onWInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWInput(e.target.value);
+    const v = parseFloat(e.target.value);
+    if (!isNaN(v)) setSizeW(round2(clamp(v, MIN_SIZE, MAX_SIZE)));
+  };
+
+  const onHInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHInput(e.target.value);
+    const v = parseFloat(e.target.value);
+    if (!isNaN(v)) setSizeH(round2(clamp(v, MIN_SIZE, MAX_SIZE)));
+  };
+
+  const changeSize = (which: "w" | "h", delta: number) => {
+    if (which === "w") applySizeW(sizeW + delta);
+    else applySizeH(sizeH + delta);
   };
 
   const previewMaxH = 360;
-  const previewScale = previewMaxH / (sizeH * 96);
-  const previewW = Math.max(160, Math.round(sizeW * 96 * previewScale));
-  const previewH = Math.round(sizeH * 96 * previewScale);
+  const previewMaxW = 420;
+  const previewLayout = barcode.trim() ? getLabelLayout(sizeW, sizeH) : null;
+  const previewScale = previewLayout
+    ? Math.min(previewMaxH / previewLayout.pxH, previewMaxW / previewLayout.pxW)
+    : 1;
+  const previewW = Math.max(
+    160,
+    Math.round((previewLayout ? previewLayout.pxW : sizeW * 96) * previewScale)
+  );
+  const previewH = Math.round(
+    (previewLayout ? previewLayout.pxH : sizeH * 96) * previewScale
+  );
   const previewImgMaxW = previewW - 14;
 
   return (
@@ -661,8 +712,8 @@ export default function BarcodesPage() {
                         key={`${p.w}x${p.h}`}
                         type="button"
                         onClick={() => {
-                          setSizeW(p.w);
-                          setSizeH(p.h);
+                          applySizeW(p.w);
+                          applySizeH(p.h);
                         }}
                         whileTap={{ scale: 0.94 }}
                         className={`px-3.5 py-2 rounded-xl text-xs font-semibold border-2 transition-all duration-300 ${
@@ -681,42 +732,57 @@ export default function BarcodesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {(
                     [
-                      { label: "Width", value: sizeW, setter: setSizeW },
-                      { label: "Height", value: sizeH, setter: setSizeH },
+                      { label: "Width", which: "w" },
+                      { label: "Height", which: "h" },
                     ] as const
-                  ).map(({ label, value, setter }) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between gap-3 bg-white/60 dark:bg-slate-800/60 border border-border rounded-2xl px-3 py-2.5"
-                    >
-                      <span className="text-sm font-medium text-foreground">
-                        {label}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <motion.button
-                          type="button"
-                          whileTap={{ scale: 0.85 }}
-                          onClick={() => changeSize(setter, -SIZE_STEP)}
-                          disabled={value <= MIN_SIZE}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-40"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </motion.button>
-                        <span className="w-14 text-center text-sm font-bold font-mono">
-                          {value}
+                  ).map(({ label, which }) => {
+                    const value = which === "w" ? sizeW : sizeH;
+                    return (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between gap-3 bg-white/60 dark:bg-slate-800/60 border border-border rounded-2xl px-3 py-2.5"
+                      >
+                        <span className="text-sm font-medium text-foreground">
+                          {label}
                         </span>
-                        <motion.button
-                          type="button"
-                          whileTap={{ scale: 0.85 }}
-                          onClick={() => changeSize(setter, SIZE_STEP)}
-                          disabled={value >= MAX_SIZE}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-40"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </motion.button>
+                        <div className="flex items-center gap-1.5">
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.85 }}
+                            onClick={() => changeSize(which, -SIZE_STEP)}
+                            disabled={value <= MIN_SIZE}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-40"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </motion.button>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step={SIZE_STEP}
+                            min={MIN_SIZE}
+                            max={MAX_SIZE}
+                            value={which === "w" ? wInput : hInput}
+                            onChange={which === "w" ? onWInput : onHInput}
+                            onBlur={() => {
+                              const raw = parseFloat(which === "w" ? wInput : hInput);
+                              if (which === "w") applySizeW(isNaN(raw) ? MIN_SIZE : raw);
+                              else applySizeH(isNaN(raw) ? MIN_SIZE : raw);
+                            }}
+                            className="w-16 text-center text-sm font-bold font-mono bg-transparent border border-transparent focus:border-indigo-400 focus:outline-none rounded-lg py-1 transition-colors"
+                          />
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.85 }}
+                            onClick={() => changeSize(which, SIZE_STEP)}
+                            disabled={value >= MAX_SIZE}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-40"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </motion.button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -732,10 +798,29 @@ export default function BarcodesPage() {
                       style={{ width: previewW, height: previewH }}
                       className="bg-white text-black rounded-md shadow-xl border border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden px-2"
                     >
-                      <p className="font-bold text-[9px] tracking-widest">T-SHIRT STOCK</p>
-                      <p className="font-bold text-[12px] leading-tight mt-1 max-w-full break-words">
-                        {name.trim() || barcode}
-                      </p>
+                      {previewLayout && (
+                        <>
+                          <p
+                            className="font-bold"
+                            style={{
+                              fontSize: Math.max(7, Math.round(previewLayout.brandFs * previewScale)),
+                              letterSpacing: Math.max(0.5, previewLayout.brandLs * previewScale),
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            T-SHIRT STOCK
+                          </p>
+                          <p
+                            className="font-bold leading-tight mt-1 max-w-full break-words"
+                            style={{
+                              fontSize: Math.max(8, Math.round(previewLayout.nameFs * previewScale)),
+                              maxHeight: Math.round(previewLayout.nameMaxH * previewScale),
+                            }}
+                          >
+                            {name.trim() || barcode}
+                          </p>
+                        </>
+                      )}
                       <img
                         src={barcodeImg.src}
                         alt="barcode"
